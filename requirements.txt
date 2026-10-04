@@ -1,0 +1,17 @@
+# Core numerical and scientific libraries
+numpy>=1.24.0
+scipy>=1.10.0
+matplotlib>=3.7.0
+
+# Computer vision and simulation video rendering
+opencv-python>=4.8.0
+
+# Cryptography, identity and secure transport
+cryptography>=41.0.0
+
+# Real-time WebSocket bridge (links 3D simulation to Python tracking and security)
+websockets>=12.0
+
+# Automated testing suite
+pytest>=7.4.0
+pytest-asyncio>=0.21.0

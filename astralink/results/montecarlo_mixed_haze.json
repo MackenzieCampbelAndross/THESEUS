@@ -1,0 +1,222 @@
+[
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 9.680143815642056,
+    "tracking_p95_px": 6.6347836426384,
+    "estimator_rms_px": 1.8339763250059764,
+    "lock_loss_rate": 0.05251396648044693,
+    "not_locked_rate": 0.07039106145251396,
+    "reacq_events": 1,
+    "reacq_mean_s": 2.0666666666666664,
+    "reacq_p95_s": 2.0666666666666664,
+    "reacq_unresolved": 0,
+    "fps_mean": 171.53328641158492,
+    "fps_p95_latency": 119.64957027496543,
+    "ct_fraction": 0.9463687150837988,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": false,
+      "reacquisition": false,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 9.413065445304428,
+    "tracking_p95_px": 7.562397568051544,
+    "estimator_rms_px": 1.7585513281729992,
+    "lock_loss_rate": 0.02905027932960894,
+    "not_locked_rate": 0.04581005586592179,
+    "reacq_events": 1,
+    "reacq_mean_s": 0.2,
+    "reacq_p95_s": 0.2,
+    "reacq_unresolved": 0,
+    "fps_mean": 138.16346210919494,
+    "fps_p95_latency": 112.88987931463525,
+    "ct_fraction": 0.9351955307262569,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 3.9736124561461246,
+    "tracking_p95_px": 6.728405531834039,
+    "estimator_rms_px": 1.6677054817541443,
+    "lock_loss_rate": 0.4212290502793296,
+    "not_locked_rate": 0.43798882681564244,
+    "reacq_events": 1,
+    "reacq_mean_s": 0.0,
+    "reacq_p95_s": 0.0,
+    "reacq_unresolved": 1,
+    "fps_mean": 141.9031145090505,
+    "fps_p95_latency": 113.94647924588037,
+    "ct_fraction": 0.8737430167597765,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": false,
+      "reacquisition": false,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 5.423036807826895,
+    "tracking_p95_px": 8.513510998221543,
+    "estimator_rms_px": 1.7956245773786246,
+    "lock_loss_rate": 0.0,
+    "not_locked_rate": 0.0,
+    "reacq_events": 0,
+    "reacq_mean_s": 0.0,
+    "reacq_p95_s": 0.0,
+    "reacq_unresolved": 0,
+    "fps_mean": 145.02157540894382,
+    "fps_p95_latency": 121.37351116191047,
+    "ct_fraction": 0.9396648044692737,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 3.9824187879555915,
+    "tracking_p95_px": 6.833000423913727,
+    "estimator_rms_px": 1.7283944575290806,
+    "lock_loss_rate": 0.04022346368715084,
+    "not_locked_rate": 0.05810055865921788,
+    "reacq_events": 1,
+    "reacq_mean_s": 0.0,
+    "reacq_p95_s": 0.0,
+    "reacq_unresolved": 1,
+    "fps_mean": 163.5126298281547,
+    "fps_p95_latency": 121.63141782872462,
+    "ct_fraction": 0.9530726256983241,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": false,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 4.312737288904864,
+    "tracking_p95_px": 7.224575761957522,
+    "estimator_rms_px": 1.7096947689086535,
+    "lock_loss_rate": 0.0,
+    "not_locked_rate": 0.01452513966480447,
+    "reacq_events": 0,
+    "reacq_mean_s": 0.0,
+    "reacq_p95_s": 0.0,
+    "reacq_unresolved": 0,
+    "fps_mean": 213.61045635660255,
+    "fps_p95_latency": 187.97769855758915,
+    "ct_fraction": 0.9530726256983241,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 5.366391592995521,
+    "tracking_p95_px": 7.183147036754805,
+    "estimator_rms_px": 1.7625325457131291,
+    "lock_loss_rate": 0.017877094972067038,
+    "not_locked_rate": 0.03798882681564246,
+    "reacq_events": 1,
+    "reacq_mean_s": 0.13333333333333333,
+    "reacq_p95_s": 0.13333333333333333,
+    "reacq_unresolved": 0,
+    "fps_mean": 190.78457223486268,
+    "fps_p95_latency": 119.73624507488879,
+    "ct_fraction": 0.9474860335195531,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 4.692549721983289,
+    "tracking_p95_px": 7.643591294481614,
+    "estimator_rms_px": 1.7372115535466837,
+    "lock_loss_rate": 0.0,
+    "not_locked_rate": 0.0,
+    "reacq_events": 0,
+    "reacq_mean_s": 0.0,
+    "reacq_p95_s": 0.0,
+    "reacq_unresolved": 0,
+    "fps_mean": 142.014064403041,
+    "fps_p95_latency": 114.02521551345066,
+    "ct_fraction": 0.9541899441340782,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 13.153199957380453,
+    "tracking_p95_px": 33.76024868834985,
+    "estimator_rms_px": 1.6910839668809425,
+    "lock_loss_rate": 0.0,
+    "not_locked_rate": 0.00782122905027933,
+    "reacq_events": 1,
+    "reacq_mean_s": 0.23333333333333334,
+    "reacq_p95_s": 0.23333333333333334,
+    "reacq_unresolved": 0,
+    "fps_mean": 145.981944047119,
+    "fps_p95_latency": 130.3361238724257,
+    "ct_fraction": 0.740782122905028,
+    "pass": {
+      "acquisition": true,
+      "tracking": false,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  },
+  {
+    "acquisition_s": 0.16666666666666666,
+    "tracking_rms_px": 3.952523605949331,
+    "tracking_p95_px": 6.759258667321888,
+    "estimator_rms_px": 1.7469396141040678,
+    "lock_loss_rate": 0.0,
+    "not_locked_rate": 0.0,
+    "reacq_events": 0,
+    "reacq_mean_s": 0.0,
+    "reacq_p95_s": 0.0,
+    "reacq_unresolved": 0,
+    "fps_mean": 135.10503790751704,
+    "fps_p95_latency": 113.31714399820223,
+    "ct_fraction": 0.9553072625698324,
+    "pass": {
+      "acquisition": true,
+      "tracking": true,
+      "lock_loss": true,
+      "reacquisition": true,
+      "fps": true
+    }
+  }
+]

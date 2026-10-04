@@ -105,3 +105,51 @@ def test_bridge_server_invalid_field_types_handling():
 
     assert response["type"] == "error"
     assert "MALFORMED_DETECTION" in response["reason"]
+
+
+def _frontend_frame(t: float, frame_id: int) -> str:
+    """Detection message exactly as emitted by src/simulator.ts (30 Hz clock starting at t = 0)."""
+    return json.dumps({
+        "type": "detection_telemetry",
+        "timestamp": t,
+        "frame_id": frame_id,
+        "centroid_x": 320.0 + 0.5 * frame_id,
+        "centroid_y": 240.0,
+        "confidence": 0.95,
+        "visible": True,
+    })
+
+
+def test_bridge_server_accepts_simulation_clock_starting_at_zero():
+    """The frontend clock starts at t = 0; consecutive 30 Hz frames must all be accepted."""
+    server = AstraLinkBridgeServer()
+    response = None
+    for i in range(45):
+        response = server.process_message(_frontend_frame(i / 30.0, i))
+        assert response["type"] == "telemetry_response", response
+    assert response["tracking_state"]["mode"] == "locked"
+    assert response["timestamp"] == 44 / 30.0  # original simulation time is echoed
+
+
+def test_bridge_server_repeated_timestamp_returns_cached_response():
+    """Render loop faster than the fixed step (or paused) repeats timestamps; must not error."""
+    server = AstraLinkBridgeServer()
+    for i in range(10):
+        server.process_message(_frontend_frame(i / 30.0, i))
+    first = server.process_message(_frontend_frame(10 / 30.0, 10))
+    for _ in range(5):
+        repeat = server.process_message(_frontend_frame(10 / 30.0, 10))
+        assert repeat["type"] == "telemetry_response"
+        assert repeat == first
+
+
+def test_bridge_server_clock_rewind_reinitialises_tracker():
+    """Operator Reset sends the clock back to t = 0; tracking must restart instead of failing."""
+    server = AstraLinkBridgeServer()
+    for i in range(30):
+        server.process_message(_frontend_frame(i / 30.0, i))
+    response = None
+    for i in range(30):
+        response = server.process_message(_frontend_frame(i / 30.0, i))
+        assert response["type"] == "telemetry_response", response
+    assert response["tracking_state"]["mode"] == "locked"

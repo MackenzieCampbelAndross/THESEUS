@@ -1,0 +1,37 @@
+{
+  "acquisition_s": 0.16666666666666666,
+  "tracking_rms_px": 5.954836281740519,
+  "tracking_p95_px": 6.906631165240281,
+  "estimator_rms_px": 1.017034656872459,
+  "lock_loss_rate": 0.01564245810055866,
+  "not_locked_rate": 0.03240223463687151,
+  "reacq_events": 1,
+  "reacq_mean_s": 0.16666666666666666,
+  "reacq_p95_s": 0.16666666666666666,
+  "reacq_unresolved": 0,
+  "fps_mean": 191.00292970735003,
+  "fps_p95_latency": 129.18961934201056,
+  "ct_fraction": 0.9441340782122905,
+  "pass": {
+    "acquisition": true,
+    "tracking": true,
+    "lock_loss": true,
+    "reacquisition": true,
+    "fps": true
+  },
+  "link": {
+    "tls_version": "TLSv1.3",
+    "mutual_auth": true,
+    "handshake_done_s": 0.4666666666666666,
+    "tls_error": null,
+    "app_bytes_sent": 7176192,
+    "app_bytes_delivered": 7176192,
+    "integrity_ok": true,
+    "goodput_kBps": 239.2064,
+    "frames_first_tx": 7876,
+    "frames_retx": 696,
+    "retx_ratio": 0.08836973082783138,
+    "channel_loss_frac": 0.06856343283582089,
+    "crc_discards": 82
+  }
+}

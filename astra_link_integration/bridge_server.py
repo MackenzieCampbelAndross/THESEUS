@@ -35,6 +35,12 @@ from src.trust.security_state import SecurityState
 
 logging.basicConfig(level=logging.INFO, format="[BridgeServer] %(levelname)s - %(message)s")
 
+# The Member 1 simulation clock starts at t = 0, but the Member 2 Tracker treats a
+# timestamp of 0.0 as "not provided" and substitutes its default step. Detections are
+# therefore shifted into strictly positive tracker time; responses echo the original
+# simulation timestamp unchanged.
+TRACKER_EPOCH_OFFSET_S = 1.0
+
 
 class AstraLinkBridgeServer:
     """Real-time WebSocket server connecting Member 1 simulation to Members 2 & 3."""
@@ -51,6 +57,16 @@ class AstraLinkBridgeServer:
         self.freshness = True
         self.last_m2_state = None
         self.last_sec_eval = None
+        self._last_frame_timestamp: Optional[float] = None
+        self._last_telemetry_response: Optional[Dict[str, Any]] = None
+
+    def _reset_tracking(self) -> None:
+        """Re-initialise tracking after the simulation clock is rewound (e.g. operator Reset)."""
+        self.tracker = Tracker()
+        self.last_m2_state = None
+        self.last_sec_eval = None
+        self._last_frame_timestamp = None
+        self._last_telemetry_response = None
 
     def process_message(self, message_str: str) -> Dict[str, Any]:
         """Process incoming JSON message from Member 1 and return TelemetryResponse."""
@@ -122,7 +138,7 @@ class AstraLinkBridgeServer:
             centroid_y = float(cy) if cy is not None else None
 
             detection = DetectionResult(
-                timestamp=timestamp,
+                timestamp=timestamp + TRACKER_EPOCH_OFFSET_S,
                 frame_id=frame_id,
                 centroid_x=centroid_x,
                 centroid_y=centroid_y,
@@ -132,8 +148,22 @@ class AstraLinkBridgeServer:
         except Exception as e:
             return {"type": "error", "reason": f"MALFORMED_DETECTION: {e}"}
 
+        # The renderer can emit several messages per simulation step (render rate above the
+        # 30 Hz fixed step, or simulation paused). Re-filtering an identical timestamp is not
+        # valid for a Kalman filter, so the previous result is returned instead.
+        if self._last_frame_timestamp is not None:
+            if timestamp == self._last_frame_timestamp and self._last_telemetry_response is not None:
+                return self._last_telemetry_response
+            if timestamp < self._last_frame_timestamp:
+                logging.info("Simulation clock rewound (%.3f s -> %.3f s); re-initialising tracker.",
+                             self._last_frame_timestamp, timestamp)
+                self._reset_tracking()
+
         # 1. Member 2 Tracker update
-        m2_state, camera_cmd = self.tracker.update(detection)
+        try:
+            m2_state, camera_cmd = self.tracker.update(detection)
+        except ValueError as e:
+            return {"type": "error", "reason": f"TRACKER_REJECTED_DETECTION: {e}"}
         self.last_m2_state = m2_state
 
         # 2. Member 3 Security Pipeline evaluation
@@ -186,6 +216,8 @@ class AstraLinkBridgeServer:
             "communication_telemetry": self.comm_mgr.get_telemetry(),
         }
 
+        self._last_frame_timestamp = timestamp
+        self._last_telemetry_response = response
         return response
 
     async def handle_client(self, websocket: websockets.WebSocketServerProtocol):
@@ -194,7 +226,11 @@ class AstraLinkBridgeServer:
         logging.info(f"Client connected: {client_address}")
         try:
             async for message in websocket:
-                response = self.process_message(message)
+                try:
+                    response = self.process_message(message)
+                except Exception as e:  # never drop the session because of one bad message
+                    logging.error(f"Failed to process message from {client_address}: {e}")
+                    response = {"type": "error", "reason": f"INTERNAL_ERROR: {e}"}
                 await websocket.send(json.dumps(response))
         except websockets.exceptions.ConnectionClosedOK:
             logging.info(f"Client disconnected cleanly: {client_address}")
