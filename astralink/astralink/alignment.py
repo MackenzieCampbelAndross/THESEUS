@@ -1,5 +1,5 @@
 """Closed-loop coarse alignment: detect -> track/predict -> status (LOCKED/COASTING/LOST) -> gimbal rates.
-Lost-beacon recovery uses a prediction-guided Levy-flight search."""
+Lost-beacon recovery uses a prediction-anchored expanding spiral search."""
 import math
 from dataclasses import dataclass
 import numpy as np
@@ -10,41 +10,24 @@ from .tracker import AdaptiveTracker
 LOCKED, COASTING, LOST = "LOCKED", "COASTING", "LOST"
 
 
-class LevySearch:
-    def __init__(self, c, rng):
-        self.c, self.rng = c, rng
-        b = c.levy_beta
-        self.sig_u = (math.gamma(1 + b) * math.sin(math.pi * b / 2) /
-                      (math.gamma((1 + b) / 2) * b * 2 ** ((b - 1) / 2))) ** (1 / b)
+class SpiralSearch:
+    """Deterministic Archimedean spiral anchored on the coarse cue. Used for INITIAL acquisition so a
+    beacon that starts near/outside the FOV edge is swept into view in ~1 s, unlike a random walk that
+    can stall. Re-acquisition after a loss still uses the prediction-guided LevySearch."""
+
+    def __init__(self, c, dt):
+        self.c, self.dt = c, dt
         self.reset()
 
     def reset(self):
-        self.off = np.zeros(2)
-        self.t_search = 0.0
-        self.t_wp = 0.0
-        self.new = True
-
-    def _step(self):
-        u = self.rng.normal(0, self.sig_u)
-        v = self.rng.normal()
-        L = self.c.levy_scale_deg * abs(u) / max(abs(v), 1e-6) ** (1 / self.c.levy_beta)   # Mantegna
-        phi = self.rng.uniform(0, 2 * math.pi)
-        return min(L, 2 * self.c.levy_r_max_deg) * np.array([math.cos(phi), math.sin(phi)])
+        self.t = 0.0
 
     def waypoint(self, center, enc, dt):
-        c = self.c
-        self.t_search += dt
-        self.t_wp += dt
-        R = min(c.levy_r_max_deg, c.levy_r0_deg + c.levy_r_growth_deg_s * self.t_search)
-        wp = center + self.off
-        if self.new or np.linalg.norm(wp - enc) < 1.0 or self.t_wp > c.levy_dwell_s:
-            self.off = self.off + self._step()
-            n = np.linalg.norm(self.off)
-            if n > R:
-                self.off *= R / n              # confine to the (growing) search disc
-            self.t_wp, self.new = 0.0, False
-            wp = center + self.off
-        return wp
+        self.t += dt
+        R = min(self.c.levy_r_max_deg, self.c.levy_r0_deg + self.c.levy_r_growth_deg_s * self.t)
+        turn = 1.6                                   # rad/s sweep rate
+        th = self.t * turn
+        return center + R * np.array([math.cos(th), math.sin(th)])
 
 
 @dataclass
@@ -66,7 +49,8 @@ class CoarseAligner:
         self.dt = 1.0 / cfg.camera.fps
         self.det = BeaconDetector(cfg.detector)
         self.trk = AdaptiveTracker(cfg.tracker, px_per_deg, self.dt)
-        self.levy = LevySearch(self.c, rng)
+        self.spiral = SpiralSearch(self.c, self.dt)
+        self.drop = 0
         self.cx, self.cy, self.f = cx, cy, f_px
         self.status = LOST
         self.miss = 0
@@ -74,10 +58,12 @@ class CoarseAligner:
         self.pend_n = 0
         self.pend_hist = []
         self.pend_dom = True
+        self.pend_age = 0
         self.center = np.array(cue, float)      # where to search (coarse cue, later the prediction)
-        self.acquired = False
+        self.search_center = np.array(cue, float)  # frozen last-known position used as the sweep anchor
         self.snr_ema = None                     # brightness signature of the tracked beacon
         self.clutter = []                       # learned world-fixed light sources [az, el, hits]
+        self.off_deg = 99.0                      # predicted beacon offset from boresight (deg), for FOV hysteresis
 
     def to_abs(self, d, enc):
         return np.array([enc[0] + math.degrees(math.atan((d.u - self.cx) / self.f)),
@@ -134,48 +120,59 @@ class CoarseAligner:
             self.center = trk.pos()
             self.status = COASTING if self.miss <= c.coast_frames else LOST
             if self.status == LOST:
-                self.levy.reset()
-                self.pending, self.pend_n = None, 0
+                self.spiral.reset()
+                self.search_center = self.center.copy()   # freeze sweep anchor at last-known (prediction diverges)
+                self.pending, self.pend_n, self.pend_age, self.drop = None, 0, 0, 0
         else:  # LOST / initial search: confirm a strong, self-consistent detection before locking
             if trk.ready:
                 trk.coast_damp()
                 self.center = trk.pos()
             cand = [(z, d) for z, d in zs if d.conf >= c.c_acquire and not self._is_clutter(z) and self._sig_ok(d)]
             if cand:
+                self.drop = 0
                 z, d = max(cand, key=lambda x: x[1].snr)
-                others = [x[1].snr for x in zs if x[1] is not d]
-                dominant = (d.snr >= c.dominance * float(np.median(others))) if others else (d.snr >= c.lone_snr)
                 if self.pending is not None and np.linalg.norm(z - self.pending) < c.confirm_gate_deg:
                     self.pend_n += 1
                 else:
-                    self.pend_n, self.pend_hist, self.pend_dom = 1, [], True
-                self.pend_dom = self.pend_dom and dominant
+                    self.pend_n, self.pend_hist, self.pend_age = 1, [], 0
+                self.pend_age += 1
                 self.pending = z
                 self.pend_hist = (self.pend_hist + [z.copy()])[-c.confirm_frames:]
                 moved = np.linalg.norm(z - self.pend_hist[0]) if len(self.pend_hist) >= c.confirm_frames else 0.0
-                # a real (mobile) beacon either moves in world angle or is a clear brightness outlier;
-                # a static background light does neither, so it is never promoted to a lock
-                if self.pend_n >= c.confirm_frames and (moved > c.move_deg or self.pend_dom):
+                # promote only on demonstrated motion in the reconstructed frame: a real beacon moves
+                # (target flight), a static light does not (platform sway is far smaller over the window)
+                if self.pend_n >= c.confirm_frames and moved > c.move_deg:
                     trk.init(z)
                     trk.update(z, d.conf)
-                    self.status, self.miss, self.acquired = LOCKED, 0, True
+                    self.status, self.miss = LOCKED, 0
                     self.snr_ema = d.snr if self.snr_ema is None else 0.7 * self.snr_ema + 0.3 * d.snr
                     self.center = trk.pos()
                     self.pending, self.pend_n = None, 0
                     chosen = (z, d)
+                elif self.pend_age > 3 * c.confirm_frames:
+                    self.pending, self.pend_n, self.pend_age = None, 0, 0   # candidate never moved (clutter): resume search
+            elif self.pending is not None and self.drop < 2:
+                self.drop += 1          # tolerate a brief dropout without resetting confirmation
             else:
-                self.pending, self.pend_n = None, 0
+                self.pending, self.pend_n, self.drop = None, 0, 0
         # ---- control ----
         if self.status in (LOCKED, COASTING):
             aim = trk.predict_ahead(c.lead_frames * self.dt)
             v = trk.vel() + c.kp * (aim - enc_v)
+            n = np.linalg.norm(v)
+            if n > c.track_v_max:                       # prevent fling-away on a bad maneuver velocity spike
+                v *= c.track_v_max / n
         else:
-            wp = self.levy.waypoint(self.center, enc_v, self.dt)
+            if self.pending is not None:
+                wp = self.pending                       # hold on a candidate so confirmation completes
+            else:
+                wp = self.spiral.waypoint(self.search_center, enc_v, self.dt)  # sweep around frozen last-known
             v = c.search_kp * (wp - enc_v)
             n = np.linalg.norm(v)
             if n > c.search_v_max:
                 v *= c.search_v_max / n
         pa = trk.pos() if trk.ready else self.center
+        self.off_deg = float(np.linalg.norm(self.center - enc_v))
         return v, Output(self.status, trk.model, chosen[1].conf if chosen else 0.0,
                          float(pa[0]), float(pa[1]), float(self.center[0]), float(self.center[1]),
                          len(dets), trk.ready)

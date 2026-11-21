@@ -32,7 +32,7 @@ class Trajectory:
         seg_left, om = 0.0, 0.0
         for i in range(n):
             self.pos[i] = p
-            rng_h = math.hypot(p[0], p[1])
+            rng_h = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2])   # 3-D slant range (matches los/scoring)
             if seg_left <= 0:
                 seg_left = rng.uniform(2.0, 6.0)
                 if s.kind == "straight":
@@ -55,6 +55,11 @@ class Trajectory:
             heading += om * dt
             seg_left -= dt
             p = p + dt * np.array([speed * math.sin(heading), speed * math.cos(heading), climb])
+            r3 = math.sqrt(p[0] * p[0] + p[1] * p[1] + p[2] * p[2])   # enforce the declared link range budget
+            if r3 > s.max_range_m:
+                p *= s.max_range_m / r3
+            elif 0.0 < r3 < s.min_range_m:
+                p *= s.min_range_m / r3
 
     def los(self, k):
         e, n_, u = self.pos[min(k, self.n - 1)]
@@ -165,7 +170,9 @@ class VirtualScene:
         self.W, self.H = cam.width, cam.height
         self.cx, self.cy = (self.W - 1) / 2, (self.H - 1) / 2
         self.f = (self.W / 2) / math.tan(math.radians(cam.hfov_deg / 2))
+        self.f_acq = (self.W / 2) / math.tan(math.radians(cam.acq_hfov_deg / 2))
         self.px_per_deg = self.f * math.radians(1.0)
+        self.px_per_deg_acq = self.f_acq * math.radians(1.0)
         wx = WEATHER[sc.weather]
         self.wx = wx
         self.alpha = 3.912 / wx["vis_km"] / 1000.0                       # extinction per metre (Koschmieder)
@@ -197,13 +204,16 @@ class VirtualScene:
             acc += img
         return acc / n
 
-    def proj(self, daz, dele):
-        return (self.cx + self.f * math.tan(math.radians(daz)),
-                self.cy - self.f * math.tan(math.radians(dele)))
+    def proj(self, daz, dele, f=None):
+        f = self.f if f is None else f
+        return (self.cx + f * math.tan(math.radians(daz)),
+                self.cy - f * math.tan(math.radians(dele)))
 
-    def capture(self, k, gimbal_true):
-        """Render frame k for the given *true* gimbal pose. Returns (uint8 frame, truth dict)."""
+    def capture(self, k, gimbal_true, acq=False):
+        """Render frame k for the given *true* gimbal pose. acq=True uses the wide coarse FOV.
+        Returns (uint8 frame, truth dict)."""
         cam, r = self.cfg.camera, self.rng
+        fcur = self.f_acq if acq else self.f
         t = k / cam.fps
         az, el, rng_m = self.traj.los(k)
         patt, patt_e = self.platform.att(t)
@@ -212,17 +222,17 @@ class VirtualScene:
         # physical line-of-sight offset of the beacon from the optical axis (what truly matters)
         daz = wrap180(az - gimbal_true[0] - patt)
         dele = el - gimbal_true[1] - patt_e
-        u, v = self.proj(daz, dele)
+        u, v = self.proj(daz, dele, fcur)
         visible = (0 <= u < self.W) and (0 <= v < self.H)
         T = math.exp(-self.alpha * rng_m)
         amp = cam.beacon_ref_amp * (cam.beacon_ref_range_m / rng_m) ** 2 * T * gi * occ
         img = self.base.copy()
         # glow
-        gu, gv = self.proj(wrap180(self.glare[0] - gimbal_true[0] - patt), self.glare[1] - gimbal_true[1] - patt_e)
+        gu, gv = self.proj(wrap180(self.glare[0] - gimbal_true[0] - patt), self.glare[1] - gimbal_true[1] - patt_e, fcur)
         img += self.glare[2] * np.outer(np.exp(-(self.gy - gv) ** 2 / (2 * 70.0 ** 2)),
                                         np.exp(-(self.gx - gu) ** 2 / (2 * 90.0 ** 2))).astype(np.float32)
         for (da, de, a) in self.dist:     # background point lights fixed in the world
-            du, dv = self.proj(wrap180(da - gimbal_true[0] - patt), de - gimbal_true[1] - patt_e)
+            du, dv = self.proj(wrap180(da - gimbal_true[0] - patt), de - gimbal_true[1] - patt_e, fcur)
             add_spot(img, du, dv, a * (0.6 + 0.4 * T), 1.5, 1.5)
         # beacon: defocus/scatter + turbulence broadening + motion blur (anisotropic)
         vel = (0.0, 0.0) if self.prev_uv is None else (u - self.prev_uv[0], v - self.prev_uv[1])
@@ -239,7 +249,7 @@ class VirtualScene:
         img += cam.shot_noise_k * np.sqrt(np.maximum(img, 0)) * r.standard_normal(img.shape, dtype=np.float32)
         img += cam.read_noise * r.standard_normal(img.shape, dtype=np.float32)
         frame = np.clip(img, 0, 255).astype(np.uint8)
-        truth = dict(u=u, v=v, visible=visible, range_m=rng_m, amp=amp, az=az, el=el,
+        truth = dict(u=u, v=v, visible=visible, range_m=rng_m, amp=amp, az=az, el=el, f=fcur,
                      omega=self.traj.omega[min(k, self.traj.n - 1)], occluded=occ < 0.5,
                      speed_px=math.hypot(*vel))
         return frame, truth

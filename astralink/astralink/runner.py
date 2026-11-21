@@ -37,8 +37,8 @@ def run(cfg: Config, seed=0, video_path=None, show=False, comms=True, progress=F
         gimbal.step(dt)
         # ---- scoring (ground truth used ONLY here) ----
         err_true = math.hypot(tr["u"] - scene.cx, tr["v"] - scene.cy) if tr["visible"] else float("nan")
-        du = scene.cx + scene.f * math.tan(math.radians((out.est_az - enc[0]))) if out.tracked else float("nan")
-        dv = scene.cy - scene.f * math.tan(math.radians((out.est_el - enc[1]))) if out.tracked else float("nan")
+        du = scene.cx + tr["f"] * math.tan(math.radians((out.est_az - enc[0]))) if out.tracked else float("nan")
+        dv = scene.cy - tr["f"] * math.tan(math.radians((out.est_el - enc[1]))) if out.tracked else float("nan")
         err_est = math.hypot(du - tr["u"], dv - tr["v"]) if (out.tracked and tr["visible"]) else float("nan")
         coupling = math.exp(-(err_true / cfg.comms.coupling_sigma_px) ** 2) if tr["visible"] else 0.0
         p_loss = 1 - (1 - cfg.comms.base_loss) * coupling

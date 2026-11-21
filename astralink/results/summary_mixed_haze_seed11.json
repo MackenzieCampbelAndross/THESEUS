@@ -1,0 +1,22 @@
+{
+  "acquisition_s": 0.36666666666666664,
+  "tracking_rms_px": 7.163412188740568,
+  "tracking_p95_px": 10.14358534107621,
+  "estimator_rms_px": 1.848877222814148,
+  "lock_loss_rate": 0.7411961989938514,
+  "not_locked_rate": 0.7439910564561207,
+  "reacq_events": 1,
+  "reacq_mean_s": 0.0,
+  "reacq_p95_s": 0.0,
+  "reacq_unresolved": 1,
+  "fps_mean": 123.97545595206063,
+  "fps_p95_latency": 99.81514238087978,
+  "ct_fraction": 0.10229178311906093,
+  "pass": {
+    "acquisition": true,
+    "tracking": true,
+    "lock_loss": false,
+    "reacquisition": false,
+    "fps": true
+  }
+}

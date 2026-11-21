@@ -100,11 +100,29 @@ def main():
         json.dump(s, open(os.path.join(a.out, f"summary_{tag}.json"), "w"), indent=2, default=float)
     if a.runs > 1:
         print("\n=== Monte-Carlo aggregate over", a.runs, "runs ===")
-        for k in allres[0]["pass"]:
-            print(f"  {k:14s} pass-rate {100*np.mean([r['pass'][k] for r in allres]):5.1f} %")
+        keys = list(allres[0]["pass"])
+        per_metric = {}
+        for k in keys:
+            pr = 100 * float(np.mean([r["pass"][k] for r in allres]))
+            per_metric[k] = round(pr, 1)
+            print(f"  {k:14s} pass-rate {pr:5.1f} %")
+        allpass = [all(r["pass"][k] for k in keys) for r in allres]
+        ap_rate = 100 * float(np.mean(allpass))
+        fail_seeds = [a.seed + i for i, ok in enumerate(allpass) if not ok]
+        print(f"  {'ALL metrics':14s} pass-rate {ap_rate:5.1f} %   (failing seeds: {fail_seeds})")
+        medians, worsts = {}, {}
         for k in ("acquisition_s", "tracking_rms_px", "lock_loss_rate", "reacq_p95_s", "fps_mean"):
             v = np.array([r[k] for r in allres], float)
-            print(f"  {k:16s} median {np.nanmedian(v):8.3f}  worst {np.nanmax(v) if k!='fps_mean' else np.nanmin(v):8.3f}")
+            if k == "fps_mean":
+                med, worst = float(np.nanmedian(v)), float(np.nanmin(v))
+            else:
+                med, worst = float(np.nanmedian(v)), float(np.nanmax(v))
+            medians[k], worsts[k] = round(med, 3), round(worst, 3)
+            print(f"  {k:16s} median {med:8.3f}  worst {worst:8.3f}")
+        summary = dict(scenario=a.scenario, weather=a.weather, n_runs=a.runs, seed0=a.seed,
+                       per_metric_pass_rate=per_metric, all_metrics_pass_rate=round(ap_rate, 1),
+                       failing_seeds=fail_seeds, medians=medians, worsts=worsts)
+        json.dump(summary, open(os.path.join(a.out, f"summary_{a.scenario}_{a.weather}.json"), "w"), indent=2, default=float)
         json.dump(allres, open(os.path.join(a.out, f"montecarlo_{a.scenario}_{a.weather}.json"), "w"), indent=2, default=float)
 
 

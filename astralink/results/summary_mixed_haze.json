@@ -1,0 +1,38 @@
+{
+  "scenario": "mixed",
+  "weather": "haze",
+  "n_runs": 20,
+  "seed0": 0,
+  "per_metric_pass_rate": {
+    "acquisition": 100.0,
+    "tracking": 100.0,
+    "lock_loss": 85.0,
+    "reacquisition": 60.0,
+    "fps": 100.0
+  },
+  "all_metrics_pass_rate": 60.0,
+  "failing_seeds": [
+    5,
+    6,
+    9,
+    11,
+    15,
+    17,
+    18,
+    19
+  ],
+  "medians": {
+    "acquisition_s": 0.367,
+    "tracking_rms_px": 3.074,
+    "lock_loss_rate": 0.0,
+    "reacq_p95_s": 0.0,
+    "fps_mean": 119.811
+  },
+  "worsts": {
+    "acquisition_s": 0.8,
+    "tracking_rms_px": 7.163,
+    "lock_loss_rate": 0.741,
+    "reacq_p95_s": 3.9,
+    "fps_mean": 97.93
+  }
+}

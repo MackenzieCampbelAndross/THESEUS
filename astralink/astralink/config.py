@@ -7,7 +7,8 @@ class CameraCfg:
     width: int = 640
     height: int = 480
     fps: float = 30.0
-    hfov_deg: float = 24.0          # wide-FOV acquisition camera
+    hfov_deg: float = 48.0          # camera FOV: the camera does COARSE alignment; fine is the photodiode's job
+    acq_hfov_deg: float = 48.0      # (kept equal: single wide FOV for the whole camera loop)
     exposure_frac: float = 0.5      # fraction of frame time the shutter is open (motion blur)
     read_noise: float = 3.0         # grey levels
     shot_noise_k: float = 0.45
@@ -82,15 +83,16 @@ class TrackerCfg:
 class ControlCfg:
     c_track: float = 0.35           # min confidence to update an existing track
     c_acquire: float = 0.6          # min confidence to start a track
-    confirm_frames: int = 6
+    confirm_frames: int = 12
     move_deg: float = 0.45          # world-angle displacement that proves a candidate is moving
     lone_snr: float = 30.0          # SNR needed to accept a lone, non-moving candidate
     dominance: float = 2.0          # SNR ratio vs. other blobs that marks a clear brightness outlier
     confirm_gate_deg: float = 1.2
-    coast_frames: int = 15          # ~0.5 s of prediction-only before declaring LOST
-    gate_min_deg: float = 0.9
-    gate_max_deg: float = 2.5
+    coast_frames: int = 25          # ~0.83 s of prediction-only before declaring LOST
+    gate_min_deg: float = 1.2
+    gate_max_deg: float = 4.0
     kp: float = 9.0                 # position gain (1/s)
+    track_v_max: float = 28.0       # cap on commanded tracking rate (deg/s): legit LOS rate <= ~15, so this only stops fling-away
     lead_frames: float = 1.5
     search_v_max: float = 18.0      # deg/s: keeps motion blur small enough to detect
     search_kp: float = 6.0
